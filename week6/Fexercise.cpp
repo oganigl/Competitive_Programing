@@ -1,75 +1,94 @@
 #include <iostream>
-#include <string>
 #include <vector>
-#include <climits>
-#include <algorithm> // Para usar std::remove
+#include <algorithm>
+#include <climits> // For using INT_MAX
+
 using namespace std;
 
-bool isValidMove(vector<vector<char>>& lake, int x, int y, vector<vector<bool>>& visited) {
-    int n = lake.size();
-   
-    return (x >= 0 && x < n && y >= 0 && y < n &&
-            (lake[x][y] == '0' || lake[x][y] == 'C') && !visited[x][y]);
+// Directions: down, up, right, left
+const vector<pair<int, int>> directions = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+
+// Helper function to check if a move is valid
+bool isValidMove(int x, int y, int width, int height, vector<vector<char>>& maze) {
+    return x >= 0 && x < height && y >= 0 && y < width && (maze[x][y] == '.' || maze[x][y] == 'S');
 }
 
-
-void dfs(vector<vector<char>>& lake, int x_frog, int y_frog, int x_home, int y_home,
-         vector<vector<bool>>& visited, int current_jumps, int& min_jumps) {
-    if (x_frog == x_home && y_frog == y_home) {
-        min_jumps = min(min_jumps, current_jumps);  
-        return;
+// Recursive function to find the shortest path
+int findShortestPath(vector<vector<char>>& maze, int x, int y, int x_exit, int y_exit, int width, int height) {
+    // Base case: we reached the exit
+    if (x == x_exit && y == y_exit) {
+        return 1; // Count this step
     }
 
-    visited[x_frog][y_frog] = true;
+    // Mark the current cell as visited
+    maze[x][y] = '#';
 
-    
-    vector<pair<int, int>> directions = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+    // Initialize the minimum steps to a large value
+    int min_steps = INT_MAX;
+
+    // Explore all 4 directions (down, up, right, left)
     for (auto& dir : directions) {
-        int new_x = x_frog + dir.first;
-        int new_y = y_frog + dir.second;
+        int new_x = x + dir.first;
+        int new_y = y + dir.second;
 
-        if (isValidMove(lake, new_x, new_y, visited)) {
-            dfs(lake, new_x, new_y, x_home, y_home, visited, current_jumps + 1, min_jumps);
+        // Check if the new position is valid for a move
+        if (isValidMove(new_x, new_y, width, height, maze)) {
+            int steps = findShortestPath(maze, new_x, new_y, x_exit, y_exit, width, height);
+
+            // If the recursive call found a valid path, update the minimum steps
+            if (steps != INT_MAX) {
+                min_steps = min(min_steps, steps + 1);
+            }
         }
     }
 
-    visited[x_frog][y_frog] = false; 
-}
-int find_min_jumps_dfs(vector<vector<char>>& lake, int x_frog, int y_frog, int x_home, int y_home) {
-    int n = lake.size();
-    vector<vector<bool>> visited(n, vector<bool>(n, false));
-    int min_jumps = INT_MAX;
+    // Unmark the current cell (backtrack) to allow other paths to explore this cell
+    maze[x][y] = '.';
 
-    dfs(lake, x_frog, y_frog, x_home, y_home, visited, 0, min_jumps);
-
-    return (min_jumps == INT_MAX) ? -1 : min_jumps; 
+    // If no valid path was found, return INT_MAX (indicating no path)
+    return min_steps;
 }
 
 int main() {
-    int count, x_frog = -1, y_frog = -1, x_home = -1, y_home = -1;
-    cin >> count;
+    int width, height;
+    cin >> width >> height;
     cin.ignore();
 
-    vector<vector<char>> lake(count, vector<char>(count));
-    string line;
-    for (int i = 0; i < count; i++) {
+    vector<vector<char>> maze(height, vector<char>(width));
+    int x_entry = -1, y_entry = -1, x_exit = -1, y_exit = -1;
+
+    // Read the maze and find the positions of 'E' (entry) and 'S' (exit)
+    for (int i = 0; i < height; i++) {
+        string line;
         getline(cin, line);
-        line.erase(remove(line.begin(), line.end(), ' '), line.end());
-        for (int j = 0; j < count; j++) {
-            lake[i][j] = line[j];
-            if (line[j] == 'R') {  
-                x_frog = i;
-                y_frog = j;
-                lake[i][j] = '0';  
+        for (int j = 0; j < width; j++) {
+            maze[i][j] = line[j];
+            if (line[j] == 'E') {
+                x_entry = i;
+                y_entry = j;
             }
-            if (line[j] == 'C') {  
-                x_home = i;
-                y_home = j;
-                
+            if (line[j] == 'S') {
+                x_exit = i;
+                y_exit = j;
             }
         }
     }
-    int solution = find_min_jumps_dfs(lake, x_frog, y_frog, x_home, y_home);
-        cout << solution << endl;
+
+    // If entry or exit is not found, return 0
+    if (x_entry == -1 || x_exit == -1) {
+        cout << 0 << endl;
+        return 0;
+    }
+
+    // Call the recursive function to find the shortest path
+    int result = findShortestPath(maze, x_entry, y_entry, x_exit, y_exit, width, height);
+
+    // If result is INT_MAX, it means no path was found
+    if (result == INT_MAX) {
+        cout << 0 << endl;
+    } else {
+        cout << result << endl;
+    }
+
     return 0;
 }
